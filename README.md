@@ -121,9 +121,8 @@ That split asked callers to classify each input upfront. In practice the classif
 | [shell](./docs/modules/shell.md) | Resolve CLI binaries via PATH lookup with explicit fallback paths. |
 | [clipboard](./docs/modules/clipboard.md) | Read and write the system clipboard as plain text. |
 | [notify](./docs/modules/notify.md) | Show desktop notifications. |
+| [keyring](./docs/modules/keyring.md) | Store, retrieve, and delete secrets in the system credential store. |
 | [osinfo](./docs/modules/osinfo.md) | Typed runtime detection helpers shared by every module. |
-
-Planned: `keyring`.
 
 ## Reading guide
 
