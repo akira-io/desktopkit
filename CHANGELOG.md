@@ -8,9 +8,19 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
-- `clipboard` package. `Read` and `Write` operate on the system clipboard as plain text via per-platform backends (`pbcopy`/`pbpaste` on macOS, PowerShell on Windows, Wayland/X11 tools on Linux). Sentinel `ErrClipboardUnavailable` is returned only on Linux when none of `wl-clipboard`, `xclip`, or `xsel` is installed.
-- `notify` package. `Show(title, body)` displays a desktop notification via `osascript` on macOS, `notify-send` on Linux, and PowerShell `BurntToast` (with `msg.exe` fallback) on Windows. Sentinels `ErrEmptyTitle` and `ErrNotifyUnavailable` cover the error cases.
-- `keyring` package. `Set`, `Get`, and `Delete` manage secrets in the system credential store via `security` (Keychain) on macOS, `secret-tool` (Secret Service) on Linux, and `cmdkey` + PowerShell `CredentialManager` on Windows. Sentinels `ErrNotFound`, `ErrKeyringUnavailable`, `ErrEmptyService`, and `ErrEmptyAccount` cover the error cases.
+- Add clipboard package.
+- Add notify package.
+- Add keyring package.
+
+### Documentation
+
+- Explain ResolutionSource removal and Resolver simplification.
+- Rewrite for adoption.
+- Add Prior art section.
+
+### Fixed
+
+- Use Windows.Forms clipboard on Windows.
 
 ## [1.0.2] - 2026-05-18
 
