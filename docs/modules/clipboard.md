@@ -15,7 +15,7 @@ Read and write the system clipboard as plain text. Per-platform backends, no CGo
 | Platform | Backend (in order tried) |
 | --- | --- |
 | macOS | `pbcopy` / `pbpaste` (always present). |
-| Windows | PowerShell `Set-Clipboard` / `Get-Clipboard`. |
+| Windows | PowerShell hosting `System.Windows.Forms.Clipboard` (STA). |
 | Linux | `wl-copy`/`wl-paste` (Wayland) → `xclip -selection clipboard` → `xsel --clipboard`. First successful one wins. |
 
 On Linux, if none of the three backends are installed, `Read`/`Write` return `ErrClipboardUnavailable`. Install one of `wl-clipboard`, `xclip`, or `xsel` to enable.
