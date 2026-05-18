@@ -1,116 +1,76 @@
 # onyx
 
-Cross-platform Go toolkit for building desktop applications without rewriting OS-specific glue every time.
+Cross-platform Go toolkit for building desktop applications without rewriting OS-specific glue every time. Thin, opinionated wrappers around the best community libraries (and direct OS calls when no library exists), behind a single, intention-revealing API.
 
-`onyx` packages thin, opinionated wrappers around the best individual community libraries (and direct OS calls when no library exists), behind a single, consistent, intention-revealing API.
-
-### Without onyx
+## Why
 
 ```go
-import (
-    "fmt"
-    "os"
-    "os/exec"
-    "path/filepath"
-    "runtime"
-)
-
-func appConfigDir(app string) (string, error) {
-    home, err := os.UserHomeDir()
-    if err != nil {
-        return "", err
+// Without onyx
+switch runtime.GOOS {
+case "darwin":
+    return filepath.Join(home, "Library", "Application Support", app), nil
+case "linux":
+    if xdg := os.Getenv("XDG_CONFIG_HOME"); xdg != "" {
+        return filepath.Join(xdg, app), nil
     }
-    switch runtime.GOOS {
-    case "darwin":
-        return filepath.Join(home, "Library", "Application Support", app), nil
-    case "linux":
-        if xdg := os.Getenv("XDG_CONFIG_HOME"); xdg != "" {
-            return filepath.Join(xdg, app), nil
-        }
-        return filepath.Join(home, ".config", app), nil
-    case "windows":
-        if v := os.Getenv("APPDATA"); v != "" {
-            return filepath.Join(v, app), nil
-        }
-        return filepath.Join(home, "AppData", "Roaming", app), nil
+    return filepath.Join(home, ".config", app), nil
+case "windows":
+    if v := os.Getenv("APPDATA"); v != "" {
+        return filepath.Join(v, app), nil
     }
-    return "", fmt.Errorf("unsupported os: %s", runtime.GOOS)
+    return filepath.Join(home, "AppData", "Roaming", app), nil
 }
-
-func revealInFileManager(path string) error {
-    switch runtime.GOOS {
-    case "darwin":
-        return exec.Command("open", "-R", path).Run()
-    case "linux":
-        return exec.Command("xdg-open", filepath.Dir(path)).Run()
-    case "windows":
-        return exec.Command("cmd", "/c", "explorer", "/select,", path).Run()
-    }
-    return fmt.Errorf("unsupported os: %s", runtime.GOOS)
-}
-
-func resolveClaude() (string, error) {
-    if p, err := exec.LookPath("claude"); err == nil {
-        return p, nil
-    }
-    candidates := []string{}
-    switch runtime.GOOS {
-    case "darwin":
-        candidates = append(candidates, "/opt/homebrew/bin/claude", "/usr/local/bin/claude")
-    case "linux":
-        candidates = append(candidates, "/usr/local/bin/claude", "/usr/bin/claude")
-    case "windows":
-        if v := os.Getenv("LOCALAPPDATA"); v != "" {
-            candidates = append(candidates, filepath.Join(v, "Programs", "claude", "claude.exe"))
-        }
-    }
-    for _, c := range candidates {
-        if info, err := os.Stat(c); err == nil && !info.IsDir() {
-            return c, nil
-        }
-    }
-    return "", fmt.Errorf("claude not found")
-}
-
-config, _ := appConfigDir("Hyperion")
-_ = revealInFileManager(config)
-claudeBin, err := resolveClaude()
 ```
 
-### With onyx
+```go
+// With onyx
+config, err := paths.For("Hyperion").Config()
+```
+
+Same behaviour on macOS, Linux, and Windows. No `runtime.GOOS` switches, no hand-rolled XDG logic, no per-OS shell invocations leaked into application code.
+
+## Install
+
+```sh
+go get github.com/akira-io/onyx
+```
+
+Requires Go 1.23 or later.
+
+## Quickstart
 
 ```go
+package main
+
 import (
-    "github.com/akira-io/onyx/paths"
+    "log"
+
     "github.com/akira-io/onyx/files"
+    "github.com/akira-io/onyx/paths"
     "github.com/akira-io/onyx/shell"
 )
 
-app := paths.For("Hyperion")
-config, _ := app.Config()
-_ = files.RevealInFileManager(config)
+func main() {
+    app := paths.For("Hyperion")
 
-claude, err := shell.NewResolver().
-    Lookup("claude").
-    Lookup("/opt/homebrew/bin/claude").
-    Resolve()
+    config, err := app.Config()
+    if err != nil {
+        log.Fatal(err)
+    }
+    if err := files.RevealInFileManager(config); err != nil {
+        log.Fatal(err)
+    }
+
+    claude, err := shell.NewResolver().
+        Lookup("claude").
+        Lookup("/opt/homebrew/bin/claude").
+        Resolve()
+    if err != nil {
+        log.Fatal(err)
+    }
+    log.Println("claude at:", claude)
+}
 ```
-
-Same behavior on macOS, Linux, and Windows. No `runtime.GOOS` switches, no hand-rolled XDG logic, no per-OS shell invocations leaked into application code.
-
-## Status
-
-Stable at v1.0.2. Public API stable within a major version (SemVer).
-
-## Design notes
-
-### `shell.Resolver`: one verb, two cases
-
-Earlier versions of `shell` exposed two separate concepts: `WithName(s)` for `PATH` lookups and `WithCandidate(p)` (later `Fallback(p)`) for explicit file paths to try when `PATH` missed. Resolution attached a source tag (`SourcePath` vs `SourceFallback` vs `SourceUnknown`) so callers could see how the binary was found.
-
-That split asked callers to classify each input upfront. In practice the classification is mechanical: if the string has a path separator (`/`, `\`) or a Windows drive prefix (`C:`), it is a path; otherwise it is a name. The source tag was rarely inspected.
-
-`Resolver` collapses everything to a single ordered list of targets. `Lookup` accepts both. `Resolve` returns the absolute path of the first target that resolves, or `ErrBinaryNotFound`. The result is a plain `string`. Callers that genuinely need to know how a binary was located inspect the returned path themselves.
 
 ## Modules
 
@@ -122,9 +82,11 @@ That split asked callers to classify each input upfront. In practice the classif
 | [clipboard](./docs/modules/clipboard.md) | Read and write the system clipboard as plain text. |
 | [notify](./docs/modules/notify.md) | Show desktop notifications. |
 | [keyring](./docs/modules/keyring.md) | Store, retrieve, and delete secrets in the system credential store. |
-| [osinfo](./docs/modules/osinfo.md) | Typed runtime detection helpers shared by every module. |
+| [osinfo](./docs/modules/osinfo.md) | Typed runtime platform detection. |
 
-## Reading guide
+## Documentation
+
+The full reference lives in [`docs/`](./docs/):
 
 - [docs/00-overview.md](./docs/00-overview.md) — what onyx is and is not.
 - [docs/01-conventions.md](./docs/01-conventions.md) — naming, function design, documentation rules every module follows.
@@ -133,21 +95,32 @@ That split asked callers to classify each input upfront. In practice the classif
 
 ## Platforms
 
-- macOS — primary target, fully supported.
-- Linux — supported with the XDG specification.
-- Windows — supported, idiomatic `%AppData%` / `%LocalAppData%` paths.
+| OS | Status |
+| --- | --- |
+| macOS | Fully tested by the maintainer. Primary development target. |
+| Linux | Compiled and unit-tested in CI. Not exercised against real desktop environments by the maintainer. |
+| Windows | Compiled and unit-tested in CI. Not exercised against real desktop environments by the maintainer. |
 
-## Installation
+CI runs on all three platforms, but a green pipeline only proves the code compiles and the platform-agnostic tests pass. The Linux and Windows backends (notification daemons, clipboard helpers, credential managers, file managers) are not verified end-to-end against live systems by the maintainer. Report issues with reproduction steps and we will work through them.
+
+## Testing
 
 ```sh
-go get github.com/akira-io/onyx
+go test ./...
 ```
 
-Go 1.23 or later.
+The full suite runs on macOS, Linux, and Windows in CI on every push to `main` and on every pull request. Locally, run the suite before opening a PR. Tests that exercise OS facilities (notifications, clipboard, keychain) skip cleanly when no backend is reachable, so the suite stays green even on minimal CI images.
 
 ## Contributing
 
-Read [docs/01-conventions.md](./docs/01-conventions.md) first. Pull requests that break the conventions are rejected.
+Pull requests welcome. Before opening one:
+
+1. Read [docs/01-conventions.md](./docs/01-conventions.md). PRs that break the conventions get rejected without further review.
+2. Read [docs/02-architecture.md](./docs/02-architecture.md) for the rules that govern where new code goes.
+3. Add tests for every public change. Touch [CHANGELOG.md](./CHANGELOG.md) under `## [Unreleased]`.
+4. Use conventional commits (`feat:`, `fix:`, `refactor:`, `docs:`, `chore:`). The changelog workflow groups bullets by prefix.
+
+For Rust consumers, see the sister crate [`akira-io/onyx-rs`](https://github.com/akira-io/onyx-rs).
 
 ## License
 
