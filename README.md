@@ -122,6 +122,16 @@ Pull requests welcome. Before opening one:
 
 For Rust consumers, see the sister crate [`akira-io/onyx-rs`](https://github.com/akira-io/onyx-rs).
 
+## Prior art
+
+`onyx` is a study project. These libraries solve overlapping problems and have more battle-test. If you want a dependency you can lean on, reach for them first:
+
+- Paths: [`github.com/adrg/xdg`](https://github.com/adrg/xdg), stdlib `os.UserConfigDir` / `os.UserCacheDir`.
+- Clipboard: [`github.com/atotto/clipboard`](https://github.com/atotto/clipboard).
+- Notifications: [`github.com/gen2brain/beeep`](https://github.com/gen2brain/beeep).
+- Keyring: [`github.com/zalando/go-keyring`](https://github.com/zalando/go-keyring).
+- Binary resolution: stdlib `os/exec.LookPath`.
+
 ## License
 
 MIT. See [LICENSE](./LICENSE).
