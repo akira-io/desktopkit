@@ -10,53 +10,51 @@ permissions:
   contents: write
 
 jobs:
-  publish:
+  release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
+      - uses: actions/setup-go@v5
         with:
           go-version: "1.23"
 
-      - name: Run tests
+      - name: Test
         run: go test ./...
-
-      - name: Resolve version
-        id: version
-        run: echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
 
       - name: Install git-cliff
         uses: taiki-e/install-action@v2
         with:
           tool: git-cliff
 
-      - name: Generate technical release notes
-        run: git-cliff --config cliff.toml --latest --strip header --tag ${{ steps.version.outputs.tag }} --output RELEASE_NOTES.md
+      - name: Generate CHANGELOG
+        run: git-cliff --config cliff.toml --tag "${{ github.ref_name }}" --output CHANGELOG.md
 
-      - name: Build source archive
+      - name: Commit CHANGELOG
         run: |
-          mkdir -p dist
-          git archive --format=tar.gz --prefix=onyx-${{ steps.version.outputs.tag }}/ \
-            -o dist/onyx-${{ steps.version.outputs.tag }}.tar.gz HEAD
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md
+          git diff --cached --quiet || git commit -m "chore(changelog): ${{ github.ref_name }}"
+          git push origin HEAD:main || true
 
-      - name: Compute coverage report
+      - name: Extract release notes
+        id: notes
         run: |
-          go test -coverprofile=coverage.txt ./... || true
-          if [ -f coverage.txt ]; then
-            mv coverage.txt dist/coverage-${{ steps.version.outputs.tag }}.txt
-          fi
+          {
+            echo 'body<<EOF'
+            git-cliff --config cliff.toml --latest --strip all
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
 
-      - name: Publish GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.version.outputs.tag }}
-          name: ${{ steps.version.outputs.tag }}
-          body_path: RELEASE_NOTES.md
-          files: |
-            dist/*
-          fail_on_unmatched_files: false
-          generate_release_notes: false
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete "${{ github.ref_name }}" --yes 2>/dev/null || true
+          gh release create "${{ github.ref_name }}" \
+            --title "${{ github.ref_name }}" \
+            --notes "${{ steps.notes.outputs.body }}" \
+            --latest
