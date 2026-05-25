@@ -20,6 +20,10 @@ func TestGetOrCreate_StableAcrossCalls(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = keyring.Delete(app, idAccount) })
 
+	if _, err := keyring.Get(app, idAccount); err != nil {
+		t.Skipf("keyring read backend unavailable, identity cannot persist: %v", err)
+	}
+
 	second, err := GetOrCreate(app)
 	if err != nil {
 		t.Fatalf("second GetOrCreate: %v", err)
