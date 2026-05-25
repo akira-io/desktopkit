@@ -6,6 +6,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-05-25
+
 ### Added
 
 - `osinfo.Hostname()` returns the operating system host name, or an empty string when it cannot be determined. Best-effort: callers supply their own fallback.
